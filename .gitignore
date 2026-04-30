@@ -1,0 +1,26 @@
+# Secrets / credentials
+*.key
+*.pem
+id_rsa*
+*credential*
+*password*
+*secret*
+passwords.yml
+.vault_pass
+
+# Ansible
+*.retry
+.venv/
+__pycache__/
+
+# Kolla / OpenStack runtime
+/etc/kolla/
+admin-openrc.sh
+
+# OS / éditeurs
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*~

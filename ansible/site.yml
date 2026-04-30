@@ -1,0 +1,52 @@
+---
+# ============================================================================
+# Playbook maître — déploiement complet du lab OpenStack
+# ============================================================================
+# Ordre :
+#   1. common      — durcissement OS, NTP, hostname/hosts, SSH trust deployer→all
+#   2. ceph        — bootstrap cephadm, MON/OSD, pools Glance/Cinder/Nova
+#   3. kolla       — bootstrap-servers, prechecks, deploy, post-deploy
+# ============================================================================
+
+- name: 1. Préparation OS (tous les nœuds OpenStack)
+  hosts: openstack
+  become: true
+  gather_facts: true
+  roles:
+    - common
+  tags: [common, prep]
+
+- name: 2. Confiance SSH du deployer vers tous les nœuds
+  hosts: openstack
+  become: false
+  gather_facts: false
+  tasks:
+    - name: Récupérer la clé publique du deployer
+      ansible.builtin.slurp:
+        src: /home/dio/.ssh/id_ed25519.pub
+      register: deployer_pubkey
+      delegate_to: deployer
+      run_once: true
+
+    - name: L'autoriser sur les nœuds
+      ansible.posix.authorized_key:
+        user: dio
+        key: "{{ deployer_pubkey.content | b64decode }}"
+        state: present
+  tags: [ssh, prep]
+
+- name: 3. Cluster Ceph (cephadm)
+  hosts: ceph_mons:ceph_osds
+  become: true
+  gather_facts: true
+  roles:
+    - ceph
+  tags: [ceph, storage]
+
+- name: 4. OpenStack via Kolla-Ansible
+  hosts: deployer
+  become: false
+  gather_facts: true
+  roles:
+    - kolla
+  tags: [kolla, openstack]

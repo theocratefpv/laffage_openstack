@@ -1,0 +1,123 @@
+---
+# Cluster Ceph via cephadm
+# Choix : cephadm (officiel, supporté par la fondation Ceph) plutôt que ceph-ansible (déprécié).
+
+- name: Installer cephadm + ceph-common
+  ansible.builtin.apt:
+    name:
+      - cephadm
+      - ceph-common
+    state: present
+    update_cache: true
+
+- name: Bootstrap du cluster (sur controller uniquement)
+  block:
+
+    - name: cephadm bootstrap
+      ansible.builtin.shell: |
+        cephadm bootstrap \
+          --mon-ip {{ hostvars['controller'].ip_storage }} \
+          --cluster-network {{ network_storage_cidr }} \
+          --skip-pull \
+          --allow-fqdn-hostname \
+          --initial-dashboard-user admin \
+          --initial-dashboard-password ceph-lab-admin
+      args:
+        creates: /etc/ceph/ceph.conf
+      register: bootstrap
+
+    - name: Récupérer la clé publique cephadm
+      ansible.builtin.slurp:
+        src: /etc/ceph/ceph.pub
+      register: cephadm_pubkey
+
+  when: inventory_hostname == 'controller'
+
+- name: Distribuer la clé cephadm aux autres hôtes
+  ansible.posix.authorized_key:
+    user: root
+    key: "{{ hostvars['controller'].cephadm_pubkey.content | b64decode }}"
+    state: present
+  when: inventory_hostname != 'controller' and inventory_hostname in groups['ceph_mons'] + groups['ceph_osds']
+
+- name: Ajouter les hôtes au cluster
+  ansible.builtin.command:
+    cmd: "ceph orch host add {{ item }} {{ hostvars[item].ip_storage }}"
+  loop:
+    - compute01
+    - compute02
+    - compute03
+  delegate_to: controller
+  run_once: true
+  changed_when: false
+  failed_when: false
+
+- name: Désigner les MONs supplémentaires (compute01 + compute02)
+  ansible.builtin.command:
+    cmd: "ceph orch apply mon --placement='controller,compute01,compute02'"
+  delegate_to: controller
+  run_once: true
+  changed_when: false
+
+- name: Déclarer les OSDs (1 disque par compute)
+  ansible.builtin.command:
+    cmd: "ceph orch daemon add osd {{ item }}:{{ hostvars[item].ceph_osd_device }}"
+  loop:
+    - compute01
+    - compute02
+    - compute03
+  delegate_to: controller
+  run_once: true
+  changed_when: false
+  failed_when: false      # idempotent: échoue si l'OSD existe déjà, pas grave
+
+- name: Attendre que le cluster soit HEALTH_OK
+  ansible.builtin.shell: ceph health
+  register: ceph_health
+  until: "'HEALTH_OK' in ceph_health.stdout or 'HEALTH_WARN' in ceph_health.stdout"
+  retries: 30
+  delay: 10
+  delegate_to: controller
+  run_once: true
+  changed_when: false
+
+- name: Créer les pools OpenStack
+  ansible.builtin.command:
+    cmd: "ceph osd pool create {{ item.name }} {{ item.pg_num }} {{ item.pg_num }}"
+  loop: "{{ ceph_pools }}"
+  delegate_to: controller
+  run_once: true
+  changed_when: false
+  failed_when: false
+
+- name: Tagger les pools
+  ansible.builtin.command:
+    cmd: "ceph osd pool application enable {{ item.name }} {{ item.application }}"
+  loop: "{{ ceph_pools }}"
+  delegate_to: controller
+  run_once: true
+  changed_when: false
+  failed_when: false
+
+- name: Créer les utilisateurs Ceph pour OpenStack
+  ansible.builtin.shell: |
+    ceph auth get-or-create client.glance mon 'profile rbd' osd 'profile rbd pool=images' > /etc/ceph/ceph.client.glance.keyring
+    ceph auth get-or-create client.cinder mon 'profile rbd' osd 'profile rbd pool=volumes, profile rbd pool=vms, profile rbd-read-only pool=images' > /etc/ceph/ceph.client.cinder.keyring
+    ceph auth get-or-create client.nova   mon 'profile rbd' osd 'profile rbd pool=vms, profile rbd pool=volumes, profile rbd-read-only pool=images' > /etc/ceph/ceph.client.nova.keyring
+  args:
+    creates: /etc/ceph/ceph.client.glance.keyring
+  delegate_to: controller
+  run_once: true
+
+- name: Récupérer ceph.conf et keyrings vers le deployer (consommés par Kolla)
+  ansible.builtin.fetch:
+    src: "{{ item }}"
+    dest: "/tmp/ceph-fetch/"
+    flat: true
+  loop:
+    - /etc/ceph/ceph.conf
+    - /etc/ceph/ceph.client.glance.keyring
+    - /etc/ceph/ceph.client.cinder.keyring
+    - /etc/ceph/ceph.client.nova.keyring
+  delegate_to: controller
+  run_once: true

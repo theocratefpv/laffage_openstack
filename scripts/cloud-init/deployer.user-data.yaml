@@ -1,0 +1,47 @@
+#cloud-config
+hostname: deployer
+fqdn: deployer.lab.local
+manage_etc_hosts: true
+
+users:
+  - name: dio
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    lock_passwd: false
+    passwd: $6$rounds=4096$saltsalt$5xqXF/Vi.qRO5LzVOX9wZ8lPnL0H0xLmO4z3dXJZxKaFBGqJN5SlHNdcOVpXjWxRGN9KYKaDtkZ.qg.YNa5C00
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICjN8f1LZDJXC0ifapy9b8Lxr/TEn8HCC0nl9idrmKzE openstack-lab
+
+write_files:
+  - path: /etc/netplan/01-mgmt.yaml
+    permissions: '0600'
+    content: |
+      network:
+        version: 2
+        ethernets:
+          ens160:                   # VMnet1 - management
+            addresses: [192.168.10.5/24]
+            routes:
+              - to: default
+                via: 192.168.10.1
+                metric: 200
+            nameservers:
+              addresses: [8.8.8.8, 1.1.1.1]
+          ens192:                   # VMnet3 - external
+            dhcp4: true
+
+packages:
+  - git
+  - python3-pip
+  - python3-venv
+  - sshpass
+
+runcmd:
+  - netplan apply
+  - sudo -u dio mkdir -p /home/dio/.ssh
+  - sudo -u dio chmod 700 /home/dio/.ssh
+  - sudo -u dio ssh-keygen -t ed25519 -f /home/dio/.ssh/id_ed25519 -N ''
+  - mkdir -p /opt/openstack-lab
+  - chown dio:dio /opt/openstack-lab
+
+final_message: "Deployer ready. SSH: dio@192.168.10.5"

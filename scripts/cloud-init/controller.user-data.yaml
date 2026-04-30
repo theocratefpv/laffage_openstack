@@ -1,0 +1,43 @@
+#cloud-config
+hostname: controller
+fqdn: controller.lab.local
+manage_etc_hosts: true
+
+users:
+  - name: dio
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    lock_passwd: false
+    passwd: $6$rounds=4096$saltsalt$5xqXF/Vi.qRO5LzVOX9wZ8lPnL0H0xLmO4z3dXJZxKaFBGqJN5SlHNdcOVpXjWxRGN9KYKaDtkZ.qg.YNa5C00
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICjN8f1LZDJXC0ifapy9b8Lxr/TEn8HCC0nl9idrmKzE openstack-lab
+      - ssh-ed25519 AAAA__REPLACE_WITH_DEPLOYER_PUBLIC_KEY__ deployer
+
+write_files:
+  - path: /etc/netplan/01-net.yaml
+    permissions: '0600'
+    content: |
+      network:
+        version: 2
+        ethernets:
+          ens160:                   # VMnet1 - management
+            addresses: [192.168.10.10/24]
+            nameservers:
+              addresses: [8.8.8.8]
+          ens192:                   # VMnet2 - tenant (VXLAN)
+            addresses: [192.168.20.10/24]
+          ens224:                   # VMnet3 - external
+            dhcp4: true
+            dhcp4-overrides:
+              use-dns: false
+            routes:
+              - to: default
+                via: 192.168.30.2
+                metric: 100
+          ens256:                   # VMnet4 - storage (Ceph)
+            addresses: [192.168.40.10/24]
+
+runcmd:
+  - netplan apply
+
+final_message: "Controller ready. Mgmt: 192.168.10.10"

@@ -1,0 +1,36 @@
+[control]
+controller ansible_host=192.168.10.10
+
+[network]
+controller
+
+[compute]
+{% for h in groups['computes'] %}
+{{ h }} ansible_host={{ hostvars[h].ip_mgmt }}
+{% endfor %}
+
+[monitoring]
+controller
+
+[storage]
+{% for h in groups['computes'] %}
+{{ h }} ansible_host={{ hostvars[h].ip_mgmt }}
+{% endfor %}
+
+[deployment]
+localhost       ansible_connection=local
+
+# ── Groupes consommés par Kolla (héritage) ───────────────────────────────
+[baremetal:children]
+control
+network
+compute
+storage
+monitoring
+
+[openstack:children]
+control
+network
+compute
+storage
+monitoring

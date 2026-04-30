@@ -1,0 +1,130 @@
+---
+# Déploiement OpenStack via Kolla-Ansible.
+# S'exécute sur la VM 'deployer' uniquement.
+
+- name: Paquets requis pour kolla-ansible
+  ansible.builtin.apt:
+    name:
+      - python3-pip
+      - python3-dev
+      - python3-venv
+      - libffi-dev
+      - libssl-dev
+      - build-essential
+      - docker.io
+      - git
+    state: present
+  become: true
+
+- name: Activer Docker
+  ansible.builtin.systemd:
+    name: docker
+    state: started
+    enabled: true
+  become: true
+
+- name: Créer le venv kolla
+  ansible.builtin.command: python3 -m venv /opt/kolla-venv
+  args:
+    creates: /opt/kolla-venv/bin/activate
+  become: true
+
+- name: Installer kolla-ansible et ses dépendances
+  ansible.builtin.pip:
+    name:
+      - "kolla-ansible=={{ kolla_ansible_version }}"
+      - "ansible-core>=2.16,<2.18"
+      - docker
+    virtualenv: /opt/kolla-venv
+    state: present
+  become: true
+
+- name: Installer les collections Ansible requises par Kolla
+  ansible.builtin.command:
+    cmd: /opt/kolla-venv/bin/kolla-ansible install-deps
+  args:
+    creates: /root/.ansible/collections/ansible_collections/openstack/kolla
+  become: true
+
+- name: Créer /etc/kolla
+  ansible.builtin.file:
+    path: /etc/kolla
+    state: directory
+    owner: dio
+    mode: '0755'
+  become: true
+
+- name: Copier globals.yml
+  ansible.builtin.template:
+    src: globals.yml.j2
+    dest: /etc/kolla/globals.yml
+    mode: '0640'
+  become: true
+
+- name: Copier l'inventory multinode
+  ansible.builtin.template:
+    src: multinode.j2
+    dest: /etc/kolla/multinode
+    mode: '0640'
+  become: true
+
+- name: Générer les mots de passe (kolla-genpwd)
+  ansible.builtin.command:
+    cmd: /opt/kolla-venv/bin/kolla-genpwd
+  args:
+    creates: /etc/kolla/passwords.yml
+  become: true
+
+- name: Forcer le mot de passe admin (lab seulement)
+  ansible.builtin.lineinfile:
+    path: /etc/kolla/passwords.yml
+    regexp: '^keystone_admin_password:'
+    line: "keystone_admin_password: {{ keystone_admin_password }}"
+  become: true
+
+- name: Copier les fichiers Ceph dans /etc/kolla/config/
+  ansible.builtin.copy:
+    src: "/tmp/ceph-fetch/{{ item.src }}"
+    dest: "/etc/kolla/config/{{ item.dest }}"
+    remote_src: true
+    mode: '0640'
+  loop:
+    - { src: ceph.conf, dest: glance/ceph.conf }
+    - { src: ceph.client.glance.keyring, dest: glance/ceph.client.glance.keyring }
+    - { src: ceph.conf, dest: cinder/cinder-volume/ceph.conf }
+    - { src: ceph.client.cinder.keyring, dest: cinder/cinder-volume/ceph.client.cinder.keyring }
+    - { src: ceph.conf, dest: nova/ceph.conf }
+    - { src: ceph.client.nova.keyring, dest: nova/ceph.client.nova.keyring }
+    - { src: ceph.client.cinder.keyring, dest: nova/ceph.client.cinder.keyring }
+  become: true
+
+- name: kolla-ansible bootstrap-servers
+  ansible.builtin.command:
+    cmd: /opt/kolla-venv/bin/kolla-ansible -i /etc/kolla/multinode bootstrap-servers
+  register: bootstrap_servers
+  changed_when: "'changed' in bootstrap_servers.stdout"
+
+- name: kolla-ansible prechecks
+  ansible.builtin.command:
+    cmd: /opt/kolla-venv/bin/kolla-ansible -i /etc/kolla/multinode prechecks
+
+- name: kolla-ansible deploy (long, 50-60 min)
+  ansible.builtin.command:
+    cmd: /opt/kolla-venv/bin/kolla-ansible -i /etc/kolla/multinode deploy
+  async: 5400
+  poll: 30
+
+- name: kolla-ansible post-deploy (génère admin-openrc.sh)
+  ansible.builtin.command:
+    cmd: /opt/kolla-venv/bin/kolla-ansible -i /etc/kolla/multinode post-deploy
+
+- name: Installer python-openstackclient
+  ansible.builtin.pip:
+    name: python-openstackclient
+    virtualenv: /opt/kolla-venv
+
+- name: Récupérer les credentials admin
+  ansible.builtin.fetch:
+    src: /etc/kolla/admin-openrc.sh
+    dest: "{{ lookup('env', 'HOME') }}/admin-openrc.sh"
+    flat: true

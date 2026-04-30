@@ -1,0 +1,75 @@
+---
+# Préparation OS commune à tous les nœuds OpenStack/Ceph
+
+- name: APT — mettre à jour l'index
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: APT — paquets de base
+  ansible.builtin.apt:
+    name:
+      - chrony
+      - curl
+      - git
+      - gnupg
+      - lsb-release
+      - lvm2
+      - python3-pip
+      - python3-venv
+      - net-tools
+      - bridge-utils
+      - jq
+    state: present
+
+- name: Désactiver le swap (requis par Kolla et reco Ceph)
+  ansible.builtin.shell: |
+    swapoff -a
+    sed -i.bak '/ swap / s/^/#/' /etc/fstab
+  args:
+    creates: /etc/fstab.bak
+
+- name: Sysctl — IP forwarding et bridge netfilter
+  ansible.posix.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    state: present
+    sysctl_set: true
+    reload: true
+  loop:
+    - { name: net.ipv4.ip_forward, value: 1 }
+    - { name: net.ipv4.conf.all.rp_filter, value: 0 }
+    - { name: net.ipv4.conf.default.rp_filter, value: 0 }
+    - { name: net.bridge.bridge-nf-call-iptables, value: 1 }
+    - { name: net.bridge.bridge-nf-call-ip6tables, value: 1 }
+
+- name: Charger le module br_netfilter
+  community.general.modprobe:
+    name: br_netfilter
+    state: present
+    persistent: present
+
+- name: /etc/hosts — entrées des nœuds
+  ansible.builtin.blockinfile:
+    path: /etc/hosts
+    marker: "# {mark} ANSIBLE — OpenStack lab"
+    block: |
+      192.168.10.5  deployer
+      192.168.10.10 controller
+      192.168.10.21 compute01
+      192.168.10.22 compute02
+      192.168.10.23 compute03
+
+- name: Désactiver firewalld / ufw (lab seulement)
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: stopped
+    enabled: false
+  loop: [ufw, firewalld]
+  failed_when: false
+
+- name: Chrony — synchro NTP
+  ansible.builtin.systemd:
+    name: chrony
+    state: started
+    enabled: true

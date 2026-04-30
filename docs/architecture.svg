@@ -1,0 +1,161 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 720" font-family="Segoe UI, Arial, sans-serif" font-size="13">
+  <defs>
+    <linearGradient id="winBg" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#0078D4"/>
+      <stop offset="1" stop-color="#005A9E"/>
+    </linearGradient>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0 0 L10 5 L0 10 z" fill="#444"/>
+    </marker>
+  </defs>
+
+  <!-- Cadre Windows host -->
+  <rect x="10" y="10" width="1080" height="700" rx="10" fill="url(#winBg)" opacity="0.08" stroke="#0078D4" stroke-width="2"/>
+  <text x="30" y="38" font-size="16" font-weight="bold" fill="#005A9E">Windows 10/11 Host — 32 Go RAM, 8 vCPU</text>
+  <text x="30" y="56" font-size="11" fill="#666">VMware Workstation Pro 17+ (nested virtualization)</text>
+
+  <!-- VMnets (rangées de réseaux) -->
+  <g>
+    <rect x="30" y="90" width="1040" height="22" rx="3" fill="#FFE4B5" stroke="#D2691E"/>
+    <text x="40" y="106" font-weight="bold">VMnet10 — Management 192.168.10.0/24 (host-only)</text>
+
+    <rect x="30" y="118" width="1040" height="22" rx="3" fill="#E6E6FA" stroke="#7B68EE"/>
+    <text x="40" y="134" font-weight="bold">VMnet20 — Tenant (VXLAN) 192.168.20.0/24 (host-only)</text>
+
+    <rect x="30" y="146" width="1040" height="22" rx="3" fill="#D4F4DD" stroke="#2E8B57"/>
+    <text x="40" y="162" font-weight="bold">VMnet30 — External / floating IPs 192.168.30.0/24 (NAT)</text>
+
+    <rect x="30" y="174" width="1040" height="22" rx="3" fill="#FFE4E1" stroke="#CD5C5C"/>
+    <text x="40" y="190" font-weight="bold">VMnet40 — Storage 192.168.40.0/24 (host-only, jumbo MTU)</text>
+  </g>
+
+  <!-- Deployer -->
+  <g transform="translate(60,230)">
+    <rect width="160" height="120" rx="8" fill="white" stroke="#444" stroke-width="2"/>
+    <rect width="160" height="22" rx="8" fill="#444"/>
+    <text x="10" y="16" fill="white" font-weight="bold">deployer</text>
+    <text x="10" y="44" font-size="11">2 Go RAM · 1 vCPU</text>
+    <text x="10" y="60" font-size="11">192.168.10.5</text>
+    <text x="10" y="80" font-size="11" fill="#0066CC">• ansible-core</text>
+    <text x="10" y="96" font-size="11" fill="#0066CC">• kolla-ansible</text>
+    <text x="10" y="112" font-size="11" fill="#0066CC">• git, openrc</text>
+  </g>
+
+  <!-- Controller -->
+  <g transform="translate(260,230)">
+    <rect width="180" height="200" rx="8" fill="white" stroke="#444" stroke-width="2"/>
+    <rect width="180" height="22" rx="8" fill="#1E90FF"/>
+    <text x="10" y="16" fill="white" font-weight="bold">controller</text>
+    <text x="10" y="44" font-size="11">8 Go RAM · 2 vCPU</text>
+    <text x="10" y="60" font-size="11">.10 / .10 / DHCP / .10</text>
+    <line x1="10" y1="68" x2="170" y2="68" stroke="#ddd"/>
+    <text x="10" y="84" font-size="11" fill="#0066CC">• Keystone / Glance</text>
+    <text x="10" y="100" font-size="11" fill="#0066CC">• Nova-API / Neutron-srv</text>
+    <text x="10" y="116" font-size="11" fill="#0066CC">• Cinder-API / Horizon</text>
+    <text x="10" y="132" font-size="11" fill="#0066CC">• MariaDB / RabbitMQ</text>
+    <text x="10" y="148" font-size="11" fill="#0066CC">• HAProxy + keepalived</text>
+    <line x1="10" y1="156" x2="170" y2="156" stroke="#ddd"/>
+    <text x="10" y="172" font-size="11" fill="#CC0000">• Ceph MON</text>
+    <text x="10" y="188" font-size="11" fill="#CC0000">• Ceph MGR</text>
+  </g>
+
+  <!-- Computes -->
+  <g transform="translate(490,230)">
+    <rect width="170" height="200" rx="8" fill="white" stroke="#444" stroke-width="2"/>
+    <rect width="170" height="22" rx="8" fill="#228B22"/>
+    <text x="10" y="16" fill="white" font-weight="bold">compute01</text>
+    <text x="10" y="44" font-size="11">6 Go RAM · 2 vCPU</text>
+    <text x="10" y="60" font-size="11">.21 / .21 / DHCP / .21</text>
+    <line x1="10" y1="68" x2="160" y2="68" stroke="#ddd"/>
+    <text x="10" y="84" font-size="11" fill="#0066CC">• nova-compute (KVM)</text>
+    <text x="10" y="100" font-size="11" fill="#0066CC">• neutron-l3 / dhcp-agent</text>
+    <text x="10" y="116" font-size="11" fill="#0066CC">• cinder-volume</text>
+    <text x="10" y="132" font-size="11" fill="#0066CC">• Open vSwitch</text>
+    <line x1="10" y1="140" x2="160" y2="140" stroke="#ddd"/>
+    <text x="10" y="156" font-size="11" fill="#CC0000">• Ceph MON + OSD (sdb)</text>
+    <text x="10" y="172" font-size="11" fill="#888">+ disque 30 Go (Ceph)</text>
+  </g>
+
+  <g transform="translate(680,230)">
+    <rect width="170" height="200" rx="8" fill="white" stroke="#444" stroke-width="2"/>
+    <rect width="170" height="22" rx="8" fill="#228B22"/>
+    <text x="10" y="16" fill="white" font-weight="bold">compute02</text>
+    <text x="10" y="44" font-size="11">6 Go RAM · 2 vCPU</text>
+    <text x="10" y="60" font-size="11">.22 / .22 / — / .22</text>
+    <line x1="10" y1="68" x2="160" y2="68" stroke="#ddd"/>
+    <text x="10" y="84" font-size="11" fill="#0066CC">• nova-compute (KVM)</text>
+    <text x="10" y="100" font-size="11" fill="#0066CC">• Open vSwitch</text>
+    <line x1="10" y1="108" x2="160" y2="108" stroke="#ddd"/>
+    <text x="10" y="124" font-size="11" fill="#CC0000">• Ceph MON + OSD (sdb)</text>
+    <text x="10" y="140" font-size="11" fill="#888">+ disque 30 Go (Ceph)</text>
+  </g>
+
+  <g transform="translate(870,230)">
+    <rect width="170" height="200" rx="8" fill="white" stroke="#444" stroke-width="2"/>
+    <rect width="170" height="22" rx="8" fill="#228B22"/>
+    <text x="10" y="16" fill="white" font-weight="bold">compute03</text>
+    <text x="10" y="44" font-size="11">6 Go RAM · 2 vCPU</text>
+    <text x="10" y="60" font-size="11">.23 / .23 / — / .23</text>
+    <line x1="10" y1="68" x2="160" y2="68" stroke="#ddd"/>
+    <text x="10" y="84" font-size="11" fill="#0066CC">• nova-compute (KVM)</text>
+    <text x="10" y="100" font-size="11" fill="#0066CC">• Open vSwitch</text>
+    <line x1="10" y1="108" x2="160" y2="108" stroke="#ddd"/>
+    <text x="10" y="124" font-size="11" fill="#CC0000">• Ceph OSD (sdb)</text>
+    <text x="10" y="140" font-size="11" fill="#888">+ disque 30 Go (Ceph)</text>
+  </g>
+
+  <!-- Liens VMnets -->
+  <line x1="120" y1="230" x2="120" y2="100" stroke="#D2691E" stroke-width="2"/>
+  <line x1="350" y1="230" x2="350" y2="100" stroke="#D2691E" stroke-width="2"/>
+  <line x1="350" y1="230" x2="350" y2="128" stroke="#7B68EE" stroke-width="2"/>
+  <line x1="350" y1="230" x2="350" y2="156" stroke="#2E8B57" stroke-width="2"/>
+  <line x1="350" y1="230" x2="350" y2="184" stroke="#CD5C5C" stroke-width="2"/>
+  <line x1="575" y1="230" x2="575" y2="100" stroke="#D2691E" stroke-width="2"/>
+  <line x1="575" y1="230" x2="575" y2="128" stroke="#7B68EE" stroke-width="2"/>
+  <line x1="575" y1="230" x2="575" y2="156" stroke="#2E8B57" stroke-width="2"/>
+  <line x1="575" y1="230" x2="575" y2="184" stroke="#CD5C5C" stroke-width="2"/>
+  <line x1="765" y1="230" x2="765" y2="100" stroke="#D2691E" stroke-width="2"/>
+  <line x1="765" y1="230" x2="765" y2="128" stroke="#7B68EE" stroke-width="2"/>
+  <line x1="765" y1="230" x2="765" y2="184" stroke="#CD5C5C" stroke-width="2"/>
+  <line x1="955" y1="230" x2="955" y2="100" stroke="#D2691E" stroke-width="2"/>
+  <line x1="955" y1="230" x2="955" y2="128" stroke="#7B68EE" stroke-width="2"/>
+  <line x1="955" y1="230" x2="955" y2="184" stroke="#CD5C5C" stroke-width="2"/>
+
+  <!-- Pool Ceph -->
+  <g transform="translate(280,470)">
+    <rect width="760" height="80" rx="10" fill="#FFF5F5" stroke="#CD5C5C" stroke-width="2" stroke-dasharray="6,4"/>
+    <text x="20" y="24" font-weight="bold" fill="#8B0000">Pool Ceph distribué — 90 Go bruts (≈ 30 Go utiles, réplication x3)</text>
+    <text x="20" y="46" font-size="12" fill="#444">Glance (images) · Cinder (volumes) · Nova (VMs éphémères)</text>
+    <text x="20" y="64" font-size="11" fill="#888">cephadm (officiel, supplante ceph-ansible déprécié) — bootstrap depuis controller</text>
+  </g>
+
+  <!-- Flux Ansible -->
+  <g transform="translate(60,600)">
+    <rect width="980" height="80" rx="10" fill="#F0F8FF" stroke="#0066CC" stroke-width="2"/>
+    <text x="20" y="22" font-weight="bold" fill="#003F7F">Flux d'orchestration Ansible (depuis deployer)</text>
+    <g transform="translate(20,40)" font-size="11">
+      <rect width="160" height="28" rx="4" fill="white" stroke="#0066CC"/>
+      <text x="80" y="18" text-anchor="middle">1. common (OS prep)</text>
+    </g>
+    <g transform="translate(200,40)" font-size="11">
+      <rect width="160" height="28" rx="4" fill="white" stroke="#0066CC"/>
+      <text x="80" y="18" text-anchor="middle">2. SSH trust deployer</text>
+    </g>
+    <g transform="translate(380,40)" font-size="11">
+      <rect width="160" height="28" rx="4" fill="white" stroke="#CD5C5C"/>
+      <text x="80" y="18" text-anchor="middle">3. ceph (cephadm)</text>
+    </g>
+    <g transform="translate(560,40)" font-size="11">
+      <rect width="160" height="28" rx="4" fill="white" stroke="#0066CC"/>
+      <text x="80" y="18" text-anchor="middle">4. kolla bootstrap-servers</text>
+    </g>
+    <g transform="translate(740,40)" font-size="11">
+      <rect width="160" height="28" rx="4" fill="#0066CC" stroke="#0066CC"/>
+      <text x="80" y="18" text-anchor="middle" fill="white" font-weight="bold">5. kolla deploy (1h)</text>
+    </g>
+    <line x1="180" y1="54" x2="200" y2="54" stroke="#444" stroke-width="1.5" marker-end="url(#arr)"/>
+    <line x1="360" y1="54" x2="380" y2="54" stroke="#444" stroke-width="1.5" marker-end="url(#arr)"/>
+    <line x1="540" y1="54" x2="560" y2="54" stroke="#444" stroke-width="1.5" marker-end="url(#arr)"/>
+    <line x1="720" y1="54" x2="740" y2="54" stroke="#444" stroke-width="1.5" marker-end="url(#arr)"/>
+  </g>
+</svg>

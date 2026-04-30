@@ -1,0 +1,40 @@
+#cloud-config
+hostname: compute{{INDEX}}
+fqdn: compute{{INDEX}}.lab.local
+manage_etc_hosts: true
+
+users:
+  - name: dio
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    lock_passwd: false
+    passwd: $6$rounds=4096$saltsalt$5xqXF/Vi.qRO5LzVOX9wZ8lPnL0H0xLmO4z3dXJZxKaFBGqJN5SlHNdcOVpXjWxRGN9KYKaDtkZ.qg.YNa5C00
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAA__REPLACE_WITH_YOUR_PUBLIC_KEY__ openstack-lab
+      - ssh-ed25519 AAAA__REPLACE_WITH_DEPLOYER_PUBLIC_KEY__ deployer
+
+write_files:
+  - path: /etc/netplan/01-net.yaml
+    permissions: '0600'
+    content: |
+      network:
+        version: 2
+        ethernets:
+          ens160:                   # VMnet1 - management
+            addresses: [192.168.10.{{MGMT_LAST}}/24]
+            nameservers:
+              addresses: [8.8.8.8]
+          ens192:                   # VMnet2 - tenant
+            addresses: [192.168.20.{{MGMT_LAST}}/24]
+          ens224:                   # VMnet3 - external
+            dhcp4: {{HAS_EXT}}
+            optional: true
+          ens256:                   # VMnet4 - storage (Ceph)
+            addresses: [192.168.40.{{MGMT_LAST}}/24]
+            mtu: 9000
+
+runcmd:
+  - netplan apply
+  - sgdisk --zap-all /dev/sdb || true
+
+final_message: "Compute{{INDEX}} ready. Mgmt: 192.168.10.{{MGMT_LAST}}"
